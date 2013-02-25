@@ -39,14 +39,27 @@ namespace BeaverSyncTest
         public bool IsDeleteFileMethodCalledBeforeCopyFileMethod = false;
 
         /// <summary>
+        /// Репозиторий файлов в памяти
+        /// </summary>
+        private readonly SortedList<string, FileMetadata> _filesRepo;
+        public MockFileSystemManager(SortedList<string, FileMetadata> filesRepository)
+        {
+            _filesRepo = filesRepository;
+        }
+
+        /// <summary>
         /// Удаление файла
         /// </summary>
         /// <param name="filePath">полный путь к файлу</param>
         public void DeleteFile(string filePath)
         {
+            // проставляем отладочно-тестовую информацию:
             IsDeleteFileMethodCalled = true;
             DeleteFileMethod_FilePath = filePath;
             IsDeleteFileMethodCalledBeforeCopyFileMethod = !IsCopyFileMethodCalled;
+
+            // удаляем из репозиторий файл с путём filePath:
+            _filesRepo.Remove(filePath);
         }
 
         /// <summary>
@@ -56,14 +69,24 @@ namespace BeaverSyncTest
         /// <param name="createCopyToFilePath">Путь к файлу который будем создавать (и в который будем копировать</param>
         public void CopyFile(string existCopyFromFilePath, string createCopyToFilePath)
         {
+            // проставляем отладочно-тестовую информацию:
             IsCopyFileMethodCalled = true;
             CopyFileMethod_ExistCopyFromFilePath = existCopyFromFilePath;
             CopyFileMethod_CreateCopyToFilePath = createCopyToFilePath;
+
+            // в репозиторий добавляем новый файл с путём createCopyToFilePath
+            // и метаданными из файла с путём existCopyFromFilePath:
+            _filesRepo.Add(createCopyToFilePath, _filesRepo[existCopyFromFilePath]);
         }
 
-        public SyncFile GetSyncFileMetadata(string filePath)
+        /// <summary>
+        /// Считывание метаданных файла
+        /// </summary>
+        /// <param name="filePath">Путь к файлу для чтения метаданных</param>
+        /// <returns>метаданные файла</returns>
+        public FileMetadata GetFileMetadata(string filePath)
         {
-            throw new NotImplementedException();
+            return _filesRepo[filePath];
         }
     }
 
@@ -75,10 +98,10 @@ namespace BeaverSyncTest
     {
         private SyncFilesPair _sfp;
         private MockFileSystemManager _injectedManager;
-        private readonly SyncFile file1 = new SyncFile(@"C:\some_folder\some_file1.csv", new DateTime(2013, 1, 5), 10);
-        private readonly SyncFile file2 = new SyncFile(@"D:\some_folder2\stuff\some_file1.csv", new DateTime(2013, 1, 7), 15);
-        private readonly SyncFile file2WithDifferName = new SyncFile(@"D:\some_folder2\stuff\some_file1_with_differ_name.csv", new DateTime(2013, 1, 7), 17);
-        private readonly SyncFile file2WithDifferExtension = new SyncFile(@"D:\some_folder2\stuff\some_file1.with_differ_extension", new DateTime(2013, 1, 7), 18);
+        private SyncFile _file1;
+        private SyncFile _file2;
+        private SyncFile _file2WithDifferName;
+        private SyncFile _file2WithDifferExtension;
 
         /// <summary>
         /// Set up mocks
@@ -86,8 +109,31 @@ namespace BeaverSyncTest
         [TestInitialize]
         public void InitializeTest()
         {
+            // создаём тестовый набор данных:
+            var file1Path = @"C:\some_folder\some_file1.csv";
+            var file1Meta = new FileMetadata {ByteSize = 10, LastModified = new DateTime(2013, 1, 5)};
+
+            var file2Path = @"D:\some_folder2\stuff\some_file1.csv";
+            var file2WithDifferNamePath = @"D:\some_folder2\stuff\some_file1_with_differ_name.csv";
+            var file2WithDifferExtensionPath = @"D:\some_folder2\stuff\some_file1.with_differ_extension";
+            var file2Meta = new FileMetadata { ByteSize = 15, LastModified = new DateTime(2013, 1, 7) };
+            
+            var filesRepo = new SortedList<string, FileMetadata>
+            {
+                {file1Path, file1Meta},  
+                {file2Path, file2Meta},
+                {file2WithDifferNamePath, file2Meta}, 
+                {file2WithDifferExtensionPath, file2Meta}
+            };
+
             // делаем иньекцию тестового менеджера файловой системы
-            _injectedManager = new MockFileSystemManager();
+            _injectedManager = new MockFileSystemManager(filesRepo);
+
+            _file1 = new SyncFile(file1Path, _injectedManager);
+            _file2 = new SyncFile(file2Path, _injectedManager);
+            _file2WithDifferName = new SyncFile(file2WithDifferNamePath, _injectedManager);
+            _file2WithDifferExtension = new SyncFile(file2WithDifferExtensionPath, _injectedManager);
+
             _sfp = new SyncFilesPair(_injectedManager);
         }
 
@@ -101,15 +147,15 @@ namespace BeaverSyncTest
         [TestMethod]
         public void SetFirstFile_CorrectSyncFile_NoException()
         {
-            _sfp.SetFirstFile(file1);
-            Assert.AreEqual(_sfp.FirstFile, file1);
+            _sfp.SetFirstFile(_file1);
+            Assert.AreEqual(_sfp.FirstFile, _file1);
         }
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentNullException))]
         public void SetSecondFile_Null_GotException()
         {
-            _sfp.SetFirstFile(file1);
+            _sfp.SetFirstFile(_file1);
             _sfp.SetSecondFile(null);
         }
 
@@ -117,31 +163,31 @@ namespace BeaverSyncTest
         [ExpectedException(typeof(InvalidOperationException))]
         public void SetSecondFile_NotSetFirstFileBefore_GotException()
         {
-            _sfp.SetSecondFile(file2);
+            _sfp.SetSecondFile(_file2);
         }
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentException))]
         public void SetSecondFile_SecondFileNameDifferFirstFileName_GotException()
         {
-            _sfp.SetFirstFile(file1);
-            _sfp.SetSecondFile(file2WithDifferName);
+            _sfp.SetFirstFile(_file1);
+            _sfp.SetSecondFile(_file2WithDifferName);
         }
 
         [TestMethod]
         [ExpectedException(typeof(ArgumentException))]
         public void SetSecondFile_SecondFileExtensionDifferFirstFileExtension_GotException()
         {
-            _sfp.SetFirstFile(file1);
-            _sfp.SetSecondFile(file2WithDifferExtension);
+            _sfp.SetFirstFile(_file1);
+            _sfp.SetSecondFile(_file2WithDifferExtension);
         }
 
         [TestMethod]
         public void SetSecondFile_CorrectSecondFile_NoException()
         {
-            _sfp.SetFirstFile(file1);
-            _sfp.SetSecondFile(file2);
-            Assert.AreEqual(_sfp.SecondFile, file2);
+            _sfp.SetFirstFile(_file1);
+            _sfp.SetSecondFile(_file2);
+            Assert.AreEqual(_sfp.SecondFile, _file2);
         }
 
         [TestMethod]
@@ -155,15 +201,15 @@ namespace BeaverSyncTest
         [ExpectedException(typeof(InvalidOperationException))]
         public void Sync_NotSetSecondFile_GotException()
         {
-            _sfp.SetFirstFile(file1);
+            _sfp.SetFirstFile(_file1);
             _sfp.Sync();
         }
 
         [TestMethod]
         public void Sync_AllFilesSet_NoException()
         {
-            _sfp.SetFirstFile(file1);
-            _sfp.SetSecondFile(file2);
+            _sfp.SetFirstFile(_file1);
+            _sfp.SetSecondFile(_file2);
             _sfp.Sync();
 
             Assert.IsTrue(_injectedManager.IsDeleteFileMethodCalled, "Не удалили неактуальный файл в синхропаре");

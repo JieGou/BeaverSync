@@ -11,6 +11,11 @@ namespace BeaverSyncLib
     public class SyncFile //: ISyncFile
     {
         /// <summary>
+        /// Объект для работы с файловой системой
+        /// </summary>
+        private IFileSystemManager _manager;
+
+        /// <summary>
         /// Полный путь к файлу
         /// </summary>
         public string FullPath { get; private set; }
@@ -26,14 +31,27 @@ namespace BeaverSyncLib
         /// <summary>
         /// Конструктор
         /// </summary>
-        /// <param name="fullPath"></param>
-        /// <param name="lastModified"></param>
-        /// <param name="byteSize"></param>
-        public SyncFile(string fullPath, DateTime lastModified, int byteSize)
+        public SyncFile(string fullPath)
         {
+            // инициализируем класс менеджера файловой системы:
+            _manager = new FileSystemManager();
+            // проставляем путь к файлу
             FullPath = fullPath;
-            LastModified = lastModified;
-            ByteSize = byteSize;
+            // считываем метаданные
+            RetrieveFileMetadata();
+        }
+
+        /// <summary>
+        /// Тест-конструктор
+        /// </summary>
+        public SyncFile(string fullPath, IFileSystemManager manager)
+        {
+            // инициализируем класс менеджера файловой системы:
+            _manager = manager;
+            // проставляем путь к файлу
+            FullPath = fullPath;
+            // считываем метаданные
+            RetrieveFileMetadata();
         }
 
         /// <summary>
@@ -41,6 +59,10 @@ namespace BeaverSyncLib
         /// </summary>
         public void RetrieveFileMetadata()
         {
+            var meta = _manager.GetFileMetadata(this.FullPath);
+
+            this.LastModified = meta.LastModified;
+            this.ByteSize = meta.ByteSize;
         }
     }
 }

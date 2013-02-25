@@ -28,7 +28,12 @@ namespace BeaverSyncLib
             throw new NotImplementedException();
         }
 
-        public SyncFile GetSyncFileMetadata(string filePath)
+        /// <summary>
+        /// Считывание метаданных файла
+        /// </summary>
+        /// <param name="filePath">Путь к файлу для чтения метаданных</param>
+        /// <returns>метаданные файла</returns>
+        public FileMetadata GetFileMetadata(string filePath)
         {
             throw new NotImplementedException();
         }
