@@ -40,6 +40,6 @@ namespace BeaverSyncLib
         /// <summary>
         /// Размер файла в байтах
         /// </summary>
-        public int ByteSize { get; set; }
+        public long ByteSize { get; set; }
     }
 }

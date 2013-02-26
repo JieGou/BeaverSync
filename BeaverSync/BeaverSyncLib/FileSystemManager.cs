@@ -15,7 +15,7 @@ namespace BeaverSyncLib
         /// <param name="filePath">полный путь к файлу</param>
         public void DeleteFile(string filePath)
         {
-            throw new NotImplementedException();
+            File.Delete(filePath);
         }
 
         /// <summary>
@@ -25,7 +25,7 @@ namespace BeaverSyncLib
         /// <param name="createCopyToFilePath">Путь к файлу который будем создавать (и в который будем копировать</param>
         public void CopyFile(string existCopyFromFilePath, string createCopyToFilePath)
         {
-            throw new NotImplementedException();
+            File.Copy(existCopyFromFilePath, createCopyToFilePath);
         }
 
         /// <summary>
@@ -35,7 +35,14 @@ namespace BeaverSyncLib
         /// <returns>метаданные файла</returns>
         public FileMetadata GetFileMetadata(string filePath)
         {
-            throw new NotImplementedException();
+            var fileInfo = new FileInfo(filePath);
+            var meta = new FileMetadata
+            {
+                ByteSize = fileInfo.Length, 
+                LastModified = fileInfo.LastWriteTimeUtc
+            };
+
+            return meta;
         }
     }
 }

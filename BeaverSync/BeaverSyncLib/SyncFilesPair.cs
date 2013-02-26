@@ -123,13 +123,13 @@ namespace BeaverSyncLib
             }
 
             // считываем актуальные метаданные файлов
-            FirstFile.RetrieveFileMetadata();
-            SecondFile.RetrieveFileMetadata();
+            var meta1 = FirstFile.RetrieveFileMetadata();
+            var meta2 = SecondFile.RetrieveFileMetadata();
 
             // по метаданным определяем файл который изменялся последним
-            if (FirstFile.LastModified != SecondFile.LastModified)
+            if (meta1.LastModified != meta2.LastModified)
             {
-                if (FirstFile.LastModified > SecondFile.LastModified) // если последним изменяли первый файл:
+                if (meta1.LastModified > meta2.LastModified) // если последним изменяли первый файл:
                 {
                     // то мы удаляем старый второй файл
                     _manager.DeleteFile(SecondFile.FullPath);
@@ -143,10 +143,6 @@ namespace BeaverSyncLib
                     // и создаем новый первый файл как копию второго
                     _manager.CopyFile(SecondFile.FullPath, FirstFile.FullPath);
                 }
-
-                // по завершении также считываем актуальные метаданные файлов
-                FirstFile.RetrieveFileMetadata();
-                SecondFile.RetrieveFileMetadata();
             }
         }
     }

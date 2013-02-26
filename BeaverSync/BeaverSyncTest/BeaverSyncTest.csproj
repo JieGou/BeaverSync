@@ -45,8 +45,10 @@
     </CodeAnalysisDependentAssemblyPaths>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MockFileSystemManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SyncFilesPairTest.cs" />
+    <Compile Include="SyncFileTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BeaverSyncLib\BeaverSyncLib.csproj">

@@ -19,14 +19,6 @@ namespace BeaverSyncLib
         /// Полный путь к файлу
         /// </summary>
         public string FullPath { get; private set; }
-        /// <summary>
-        /// Дата изменения
-        /// </summary>
-        public DateTime LastModified { get; private set; }
-        /// <summary>
-        /// Размер файла в байтах
-        /// </summary>
-        public int ByteSize { get; private set; }
 
         /// <summary>
         /// Конструктор
@@ -37,8 +29,6 @@ namespace BeaverSyncLib
             _manager = new FileSystemManager();
             // проставляем путь к файлу
             FullPath = fullPath;
-            // считываем метаданные
-            RetrieveFileMetadata();
         }
 
         /// <summary>
@@ -50,19 +40,15 @@ namespace BeaverSyncLib
             _manager = manager;
             // проставляем путь к файлу
             FullPath = fullPath;
-            // считываем метаданные
-            RetrieveFileMetadata();
         }
 
         /// <summary>
         /// Пересчитывание метаданных с помощью менеджера файловой системы
         /// </summary>
-        public void RetrieveFileMetadata()
+        public FileMetadata RetrieveFileMetadata()
         {
             var meta = _manager.GetFileMetadata(this.FullPath);
-
-            this.LastModified = meta.LastModified;
-            this.ByteSize = meta.ByteSize;
+            return meta;
         }
     }
 }
