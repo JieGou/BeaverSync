@@ -131,19 +131,28 @@ namespace BeaverSyncLib
             {
                 if (meta1.LastModified > meta2.LastModified) // если последним изменяли первый файл:
                 {
-                    // то мы удаляем старый второй файл
-                    _manager.DeleteFile(SecondFile.FullPath);
-                    // и создаем новый второй файл как копию первого
-                    _manager.CopyFile(FirstFile.FullPath, SecondFile.FullPath);
+                    SyncTransaction(_manager, SecondFile, FirstFile);
                 }
                 else // если последним изменяли второй файл:
                 {
-                    // то мы удаляем старый первый файл:
-                    _manager.DeleteFile(FirstFile.FullPath);
-                    // и создаем новый первый файл как копию второго
-                    _manager.CopyFile(SecondFile.FullPath, FirstFile.FullPath);
+                    SyncTransaction(_manager, FirstFile, SecondFile);
                 }
             }
+        }
+
+        private static void SyncTransaction(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile)
+        {
+            // в самом начале делаем бекап неактуального файла в директории с исполняемым файлом
+            manager.CopyFile(nonActualFile.FullPath,
+                String.Format("backup/{0}[{1:yyyy-MM-dd hh:mm:ss}]{2}", 
+                Path.GetFileNameWithoutExtension(nonActualFile.FullPath),
+                SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath)));
+
+            // потом удаляем забекапленный неактуальный файл
+            manager.DeleteFile(nonActualFile.FullPath);
+
+            // и создаем новый файл как копию актуального на месте удаленного неактуального
+            manager.CopyFile(actualFile.FullPath, nonActualFile.FullPath);
         }
     }
 }

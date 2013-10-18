@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using BeaverSyncLib;
 
@@ -6,6 +7,7 @@ namespace BeaverSyncTest
     /// <summary>
     /// Тестовый mock объект IFileSystemManager
     /// </summary>
+    [Obsolete]
     public class MockFileSystemManager : IFileSystemManager
     {
         /// <summary>

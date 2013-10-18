@@ -22,7 +22,7 @@ namespace BeaverSyncTest
         /// <summary>
         /// Тестовый менеджер файловой системы
         /// </summary>
-        private MockFileSystemManager _injectedManager;
+        private IFileSystemManager _injectedManager;
         /// <summary>
         /// Файл номер 1, неактуальный (более старый)
         /// </summary>
@@ -35,6 +35,11 @@ namespace BeaverSyncTest
         private SyncFile _actualFileWithDifferExtension;
 
         /// <summary>
+        /// Значение заменитель для вызовов DateTime.Now в рамках тестов
+        /// </summary>
+        private readonly DateTime _testDateTimeNow = new DateTime(2013, 01, 07, 15, 50, 10);
+
+        /// <summary>
         /// Set up mocks
         /// </summary>
         [TestInitialize]
@@ -42,27 +47,28 @@ namespace BeaverSyncTest
         {
             // создаём тестовый набор данных:
 
-            //
-            var file1Path = @"C:\some_folder\some_file1.csv";
-            var file1Meta = new FileMetadata {ByteSize = 10, LastModified = new DateTime(2013, 1, 5)};
+            // иньекция системного времени:
+            SystemTime.Now = () => _testDateTimeNow;
 
-            // 
+            // файл номер 1
+            var file1Path = @"C:\some_folder\some_file1.csv"; // путь
+            var file1Meta = new FileMetadata {ByteSize = 10, LastModified = new DateTime(2013, 1, 5)}; // свойства
+
+            // файл номер 2, три файла(три пути) с одинаковыми свойствами
             var file2Path = @"D:\some_folder2\stuff\some_file1.csv";
             var file2WithDifferNamePath = @"D:\some_folder2\stuff\some_file1_with_differ_name.csv";
             var file2WithDifferExtensionPath = @"D:\some_folder2\stuff\some_file1.with_differ_extension";
             var file2Meta = new FileMetadata { ByteSize = 15, LastModified = new DateTime(2013, 1, 7) };
             
-            // репозиторий в памяти с тестовыми файлами
-            var filesRepo = new SortedList<string, FileMetadata>
-            {
-                {file1Path, file1Meta},  
-                {file2Path, file2Meta}, 
-                {file2WithDifferNamePath, file2Meta}, 
-                {file2WithDifferExtensionPath, file2Meta}
-            };
+            // создаем тестовый менеджер файловой системы
+            _injectedManager = A.Fake<IFileSystemManager>();
+            // прописываем какие свойства (матаданные) он должен возвращать по каждому файлу
+            A.CallTo(() => _injectedManager.GetFileMetadata(file1Path)).Returns(file1Meta);
+            A.CallTo(() => _injectedManager.GetFileMetadata(file2Path)).Returns(file2Meta);
+            A.CallTo(() => _injectedManager.GetFileMetadata(file2WithDifferNamePath)).Returns(file2Meta);
+            A.CallTo(() => _injectedManager.GetFileMetadata(file2WithDifferExtensionPath)).Returns(file2Meta);
 
-            // делаем иньекцию тестового менеджера файловой системы
-            _injectedManager = new MockFileSystemManager(filesRepo);
+            #region делаем иньекцию тестового менеджера файловой системы:
 
             // создаем объекты SyncFile для файлов:
             // объект SyncFile для файла номер 1, неактуальный (более старый)
@@ -76,6 +82,7 @@ namespace BeaverSyncTest
             _actualFileWithDifferExtension = new SyncFile(file2WithDifferExtensionPath, _injectedManager);
 
             _sfp = new SyncFilesPair(_injectedManager);
+            #endregion
         }
 
         [TestMethod]
@@ -170,29 +177,50 @@ namespace BeaverSyncTest
         }
 
         [TestMethod]
-        public void Sync_AllFilesSet_NoException()
+        public void Sync_AllFilesSetAndActualIsSecond_NoException()
         {
             // Arrange
-            var injectedManager = A.Fake<IFileSystemManager>();
-            _sfp = new SyncFilesPair(injectedManager);
             _sfp.SetFirstFile(_nonActualFile);
-            _sfp.SetSecondFile(_actualFile);
+            _sfp.SetSecondFile(_actualFile); // актуальный второй
 
             // Act
             _sfp.Sync();
 
             // Assert
-            // (!) ниже сложный поведенческий ассерт,
-            // т.к. результат выполнения метода это состояние файловой системы
-            // мы проверяем внутреннее ожидаемое поведение метода, а именно
-            // порядок вызова методов менеджера файловой системы:
-            
+            SyncMethodInnerBehaviourAssert();
+        }
+
+        [TestMethod]
+        public void Sync_AllFilesSetAndActualIsFirst_NoException()
+        {
+            // Arrange
+            _sfp.SetFirstFile(_actualFile); // актуальный первый
+            _sfp.SetSecondFile(_nonActualFile);
+
+            // Act
+            _sfp.Sync();
+
+            // Assert
+            SyncMethodInnerBehaviourAssert();
+        }
+
+        /// <summary>
+        ///  (!) ниже сложный поведенческий ассерт для метода Sync,
+        /// т.к. результат выполнения метода это состояние файловой системы
+        /// мы проверяем внутреннее ожидаемое поведение метода, а именно
+        /// порядок вызова методов менеджера файловой системы:
+        /// </summary>
+        private void SyncMethodInnerBehaviourAssert()
+        {
             int i = 0; // переменная счетчик определяющего порядковый номер метода
 
             // 1. Проверяем, что бекап неактуального файла делается и делается до его перезаписи:
             A.CallTo(
                 () =>
-                injectedManager.CopyFile(_nonActualFile.FullPath, "backup/" + Path.GetFileName(_nonActualFile.FullPath))
+                _injectedManager.CopyFile(_nonActualFile.FullPath,
+                String.Format("backup/{0}[{1:yyyy-MM-dd hh:mm:ss}]{2}",
+                Path.GetFileNameWithoutExtension(_nonActualFile.FullPath),
+                _testDateTimeNow, Path.GetExtension(_nonActualFile.FullPath)))
                 ).Invokes(() =>
                 {
                     //  - 1.1 проверяем что создание бекапа в самом начале
@@ -202,54 +230,24 @@ namespace BeaverSyncTest
 
             // 2. Проверяем что удаляем неактуальный файл после того как его забекапим
             A.CallTo(
-                () => injectedManager.DeleteFile(_nonActualFile.FullPath)
+                () => _injectedManager.DeleteFile(_nonActualFile.FullPath)
                 ).Invokes(() =>
                 {
                     // - 2.1 удаляем после бекапа
-                    Assert.IsFalse(i == 1,"Неверный порядок вызовов. Удалять неактуальный файл нужно после того как сделали его бекап, и перед тем как копировать на его место актуальный"); 
+                    Assert.IsFalse(i == 1, "Неверный порядок вызовов. Удалять неактуальный файл нужно после того как сделали его бекап, и перед тем как копировать на его место актуальный");
                     i++;
                 }).MustHaveHappened(Repeated.Exactly.Once); // - 2.2 и что удалени было только один раз
 
             // 3. Проверяем что копируем актуальный после того как удалили неактуальный (и забекапили его)
             A.CallTo(
-                () => injectedManager.CopyFile(_actualFile.FullPath, _nonActualFile.FullPath)
+                () => _injectedManager.CopyFile(_actualFile.FullPath, _nonActualFile.FullPath)
                 ).Invokes(() =>
                 {
                     // - 3.1 копируем после удаления
                     Assert.IsFalse(i == 3, "Неверный порядок вызовов. Копировать актуальный файл нужно в самом конце");
                     i++;
                 }).MustHaveHappened(Repeated.Exactly.Once); // - 3.2 и что копирование было только один раз
-            
-
-            /*
-            Assert.IsTrue(
-                // проверяем что вызывали метод копирования:
-                _injectedManager.IsCopyFileMethodCalled
-                // и вызывали для копирования именно неактуального файла:
-                && _injectedManager.CopyFileMethod_ExistCopyFromFilePath == _nonActualFile.FullPath
-                , "Не сделали резервную копию перезаписываемого (неактуального) файла при синхронизации");
-
-            Assert.IsTrue(
-                // проверяем что вызывали метод удаления файла:
-                _injectedManager.IsDeleteFileMethodCalled
-                // и вызывали для удаления именно неактуального файла:
-                && _injectedManager.DeleteFileMethod_FilePath == _nonActualFile.FullPath
-                , "Не удалили неактуальный файл в синхропаре");
-
-            Assert.IsTrue(
-                // проверяем что вызывали метод копирования файла:
-                _injectedManager.IsCopyFileMethodCalled
-                // и вызывали для копирования именно актуального файла:
-                && _injectedManager.CopyFileMethod_ExistCopyFromFilePath == _actualFile.FullPath
-                // и копировали на место неактуального
-                && _injectedManager.CopyFileMethod_CreateCopyToFilePath == _nonActualFile.FullPath
-                , "Не скопировали актуальный файл на место неактуального в синхропаре");
-
-            Assert.IsTrue(_injectedManager.IsDeleteFileMethodCalledBeforeCopyFileMethod, 
-                "Не удалили неактуальный файл перед копированием актуального файла на его место");
-
-            */
-            }
+        }
         
     }
 }
