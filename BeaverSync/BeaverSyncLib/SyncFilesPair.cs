@@ -144,7 +144,7 @@ namespace BeaverSyncLib
         {
             // в самом начале делаем бекап неактуального файла в директории с исполняемым файлом
             manager.CopyFile(nonActualFile.FullPath,
-                String.Format("backup/{0}[{1:yyyy-MM-dd hh:mm:ss}]{2}", 
+                String.Format("backup\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",  //AppDomain.CurrentDomain.BaseDirectory + 
                 Path.GetFileNameWithoutExtension(nonActualFile.FullPath),
                 SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath)));
 
