@@ -8,12 +8,12 @@ namespace BeaverSyncLib
     /// <summary>
     /// Метаданные файла необходимые для синхронизации
     /// </summary>
-    public class SyncFile //: ISyncFile
+    public class SyncFile
     {
         /// <summary>
         /// Объект для работы с файловой системой
         /// </summary>
-        private IFileSystemManager _manager;
+        private readonly IFileSystemManager _manager;
 
         /// <summary>
         /// Полный путь к файлу
@@ -24,11 +24,8 @@ namespace BeaverSyncLib
         /// Конструктор
         /// </summary>
         public SyncFile(string fullPath)
+            :this(fullPath, FileSystemManager.Instance)
         {
-            // инициализируем класс менеджера файловой системы:
-            _manager = new FileSystemManager();
-            // проставляем путь к файлу
-            FullPath = fullPath;
         }
 
         /// <summary>

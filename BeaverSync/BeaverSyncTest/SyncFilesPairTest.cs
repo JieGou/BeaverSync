@@ -254,7 +254,7 @@ namespace BeaverSyncTest
                 A.CallTo(
                     () =>
                     _injectedManager.CopyFile(_nonActualFile.FullPath,
-                    String.Format("{3}\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",
+                    String.Format("{3}\\{0}[{1:yyyy-MM-dd HH-mm-ss}]{2}",
                     Path.GetFileNameWithoutExtension(_nonActualFile.FullPath),
                     _testDateTimeNow, Path.GetExtension(_nonActualFile.FullPath), backupDirPath))
                     ).Invokes(() =>

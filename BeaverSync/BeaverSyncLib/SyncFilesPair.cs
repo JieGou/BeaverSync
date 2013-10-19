@@ -22,7 +22,7 @@ namespace BeaverSyncLib
         /// <summary>
         /// Объект для работы с файловой системой
         /// </summary>
-        private IFileSystemManager _manager;
+        private readonly IFileSystemManager _manager;
         /// <summary>
         /// Путь к директории в которую будут сохраняться резервные копии неактуального файла
         /// при синхронизации
@@ -80,9 +80,8 @@ namespace BeaverSyncLib
         /// Конструктор
         /// </summary>
         public SyncFilesPair()
+            :this(FileSystemManager.Instance)
         {
-            // инициализируем класс менеджера файловой системы:
-            _manager = new FileSystemManager();
         }
 
         /// <summary>
@@ -91,6 +90,7 @@ namespace BeaverSyncLib
         /// <param name="manager">IFileSystemManager объект</param>
         public SyncFilesPair(IFileSystemManager manager)
         {
+            // инициализируем класс менеджера файловой системы:
             _manager = manager;
         }
 
@@ -184,7 +184,7 @@ namespace BeaverSyncLib
         {
             // в самом начале делаем бекап неактуального файла в директории с исполняемым файлом
             manager.CopyFile(nonActualFile.FullPath,
-                String.Format("{3}\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",  //AppDomain.CurrentDomain.BaseDirectory + 
+                String.Format("{3}\\{0}[{1:yyyy-MM-dd HH-mm-ss}]{2}",  //AppDomain.CurrentDomain.BaseDirectory + 
                 Path.GetFileNameWithoutExtension(nonActualFile.FullPath),
                 SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath), backupDirPath));
 

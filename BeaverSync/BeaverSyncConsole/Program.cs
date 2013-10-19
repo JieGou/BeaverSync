@@ -16,6 +16,8 @@ namespace BeaverSyncConsole
         static void Main(string[] args)
         {
             var syncPairs = new List<SyncFilesPair>();
+            var backupDir = System.Environment.CurrentDirectory + "\\backup";
+            FileSystemManager.Instance.CreateDirIfNotExist(backupDir);
 
             try
             {
@@ -24,7 +26,7 @@ namespace BeaverSyncConsole
 
                 foreach (var xPair in xPairs)
                 {
-                    var pair = new SyncFilesPair();
+                    var pair = new SyncFilesPair {BackupDirPath = backupDir, NeedBackup = true};
                     var file1 = new SyncFile(xPair.Element("FirstFilePath").Value);
                     var file2 = new SyncFile(xPair.Element("SecondFilePath").Value);
                     pair.SetFirstFile(file1);
