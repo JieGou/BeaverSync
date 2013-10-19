@@ -177,9 +177,11 @@ namespace BeaverSyncTest
         }
 
         [TestMethod]
-        public void Sync_AllFilesSetAndActualIsSecond_NoException()
+        public void Sync_AllFilesSetAndActualIsSecondAndNeedBackup_NoException()
         {
             // Arrange
+            _sfp.NeedBackup = true;
+            _sfp.BackupDirPath = "C:\\backup-test";
             _sfp.SetFirstFile(_nonActualFile);
             _sfp.SetSecondFile(_actualFile); // актуальный второй
 
@@ -187,13 +189,15 @@ namespace BeaverSyncTest
             _sfp.Sync();
 
             // Assert
-            SyncMethodInnerBehaviourAssert();
+            SyncMethodInnerBehaviourAssert(_sfp.NeedBackup, _sfp.BackupDirPath);
         }
 
         [TestMethod]
-        public void Sync_AllFilesSetAndActualIsFirst_NoException()
+        public void Sync_AllFilesSetAndActualIsFirstAndNeedBackup_NoException()
         {
             // Arrange
+            _sfp.NeedBackup = true;
+            _sfp.BackupDirPath = "C:\\backup-test";
             _sfp.SetFirstFile(_actualFile); // актуальный первый
             _sfp.SetSecondFile(_nonActualFile);
 
@@ -201,7 +205,37 @@ namespace BeaverSyncTest
             _sfp.Sync();
 
             // Assert
-            SyncMethodInnerBehaviourAssert();
+            SyncMethodInnerBehaviourAssert(_sfp.NeedBackup, _sfp.BackupDirPath);
+        }
+
+        [TestMethod]
+        public void Sync_AllFilesSetAndActualIsSecond_NoException()
+        {
+            // Arrange
+            _sfp.NeedBackup = false;
+            _sfp.SetFirstFile(_nonActualFile);
+            _sfp.SetSecondFile(_actualFile); // актуальный второй
+
+            // Act
+            _sfp.Sync();
+
+            // Assert
+            SyncMethodInnerBehaviourAssert(_sfp.NeedBackup, _sfp.BackupDirPath);
+        }
+
+        [TestMethod]
+        public void Sync_AllFilesSetAndActualIsFirst_NoException()
+        {
+            // Arrange
+            _sfp.NeedBackup = false;
+            _sfp.SetFirstFile(_actualFile); // актуальный первый
+            _sfp.SetSecondFile(_nonActualFile);
+
+            // Act
+            _sfp.Sync();
+
+            // Assert
+            SyncMethodInnerBehaviourAssert(_sfp.NeedBackup, _sfp.BackupDirPath);
         }
 
         /// <summary>
@@ -210,23 +244,30 @@ namespace BeaverSyncTest
         /// мы проверяем внутреннее ожидаемое поведение метода, а именно
         /// порядок вызова методов менеджера файловой системы:
         /// </summary>
-        private void SyncMethodInnerBehaviourAssert()
+        private void SyncMethodInnerBehaviourAssert(bool needBackup, string backupDirPath)
         {
             int i = 0; // переменная счетчик определяющего порядковый номер метода
 
-            // 1. Проверяем, что бекап неактуального файла делается и делается до его перезаписи:
-            A.CallTo(
-                () =>
-                _injectedManager.CopyFile(_nonActualFile.FullPath,
-                String.Format("backup\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",
-                Path.GetFileNameWithoutExtension(_nonActualFile.FullPath),
-                _testDateTimeNow, Path.GetExtension(_nonActualFile.FullPath)))
-                ).Invokes(() =>
-                {
-                    //  - 1.1 проверяем что создание бекапа в самом начале
-                    Assert.IsFalse(i == 0, "Неверный порядок вызовов. Бекап неактуального файла нужно делать в самом начале");
-                    i++;
-                }).MustHaveHappened(Repeated.Exactly.Once); // - 1.2 и что создание бекапа было только один раз
+            if (needBackup) // если должны делать бекап, проверяем что он делается:
+            {
+                // 1. Проверяем, что бекап неактуального файла делается и делается до его перезаписи:
+                A.CallTo(
+                    () =>
+                    _injectedManager.CopyFile(_nonActualFile.FullPath,
+                    String.Format("{3}\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",
+                    Path.GetFileNameWithoutExtension(_nonActualFile.FullPath),
+                    _testDateTimeNow, Path.GetExtension(_nonActualFile.FullPath), backupDirPath))
+                    ).Invokes(() =>
+                    {
+                        //  - 1.1 проверяем что создание бекапа в самом начале
+                        Assert.IsFalse(i == 0, "Неверный порядок вызовов. Бекап неактуального файла нужно делать в самом начале");
+                        i++;
+                    }).MustHaveHappened(Repeated.Exactly.Once); // - 1.2 и что создание бекапа было только один раз
+            }
+            else // если бекап делать не нужно
+            {
+                i++; // пропускаем искуственно вызов этого метода
+            }
 
             // 2. Проверяем что удаляем неактуальный файл после того как его забекапим
             A.CallTo(
