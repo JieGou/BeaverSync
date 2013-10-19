@@ -23,6 +23,12 @@ namespace BeaverSyncLib
         /// Объект для работы с файловой системой
         /// </summary>
         private IFileSystemManager _manager;
+        /// <summary>
+        /// Путь к директории в которую будут сохраняться резервные копии неактуального файла
+        /// при синхронизации
+        /// <remarks>при <seealso cref="NeedBackup"/> == true</remarks>
+        /// </summary>
+        private string _backupDirPath = "backup";
 
         /// <summary>
         /// Флаг установлен ли первый файл синхропары
@@ -52,6 +58,22 @@ namespace BeaverSyncLib
         public SyncFile SecondFile
         {
             get { return _file2; }
+        }
+
+        /// <summary>
+        /// Флаг нужно ли делать резервную копию неактуального файла в синхропаре при синхронизации
+        /// </summary>
+        public bool NeedBackup { get; set; }
+
+        /// <summary>
+        /// Путь к директории в которую будут сохраняться резервные копии неактуального файла
+        /// при синхронизации
+        /// <remarks>при <seealso cref="NeedBackup"/> == true</remarks>
+        /// </summary>
+        public string BackupDirPath
+        {
+            get { return _backupDirPath; }
+            set { _backupDirPath = value; }
         }
 
         /// <summary>
@@ -131,23 +153,46 @@ namespace BeaverSyncLib
             {
                 if (meta1.LastModified > meta2.LastModified) // если последним изменяли первый файл:
                 {
-                    SyncTransaction(_manager, SecondFile, FirstFile);
+                    if (NeedBackup) 
+                    {
+                        // синхронизируем файлы с бекапом
+                        SyncTransactionWithBackup(_manager, SecondFile, FirstFile, BackupDirPath);
+                    }
+                    else
+                    {
+                        // синхронизируем файлы без бекапа
+                        SyncTransaction(_manager, SecondFile, FirstFile);
+                    }
                 }
                 else // если последним изменяли второй файл:
                 {
-                    SyncTransaction(_manager, FirstFile, SecondFile);
+                    if (NeedBackup)
+                    {
+                        // синхронизируем файлы с бекапом
+                        SyncTransactionWithBackup(_manager, FirstFile, SecondFile, BackupDirPath);
+                    }
+                    else
+                    {
+                        // синхронизируем файлы без бекапа
+                        SyncTransaction(_manager, FirstFile, SecondFile);
+                    }
                 }
             }
         }
 
-        private static void SyncTransaction(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile)
+        private static void SyncTransactionWithBackup(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile, string backupDirPath)
         {
             // в самом начале делаем бекап неактуального файла в директории с исполняемым файлом
             manager.CopyFile(nonActualFile.FullPath,
-                String.Format("backup/{0}[{1:yyyy-MM-dd hh:mm:ss}]{2}", 
+                String.Format("{3}\\{0}[{1:yyyy-MM-dd hh-mm-ss}]{2}",  //AppDomain.CurrentDomain.BaseDirectory + 
                 Path.GetFileNameWithoutExtension(nonActualFile.FullPath),
-                SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath)));
+                SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath), backupDirPath));
 
+            SyncTransaction(manager, nonActualFile, actualFile);
+        }
+
+        private static void SyncTransaction(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile)
+        {
             // потом удаляем забекапленный неактуальный файл
             manager.DeleteFile(nonActualFile.FullPath);
 
