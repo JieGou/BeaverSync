@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 
 namespace BeaverSyncLib
@@ -9,6 +8,25 @@ namespace BeaverSyncLib
     /// </summary>
     public class FileSystemManager : IFileSystemManager
     {
+        #region Singleton
+        private FileSystemManager()
+        {
+        }
+
+        private static FileSystemManager _instance = null;
+
+        public static FileSystemManager Instance 
+        {
+            get
+            {
+                if(_instance == null)
+                    _instance = new FileSystemManager();
+
+                return _instance;
+            }
+        }
+        #endregion
+
         /// <summary>
         /// Удаление файла
         /// </summary>
@@ -43,6 +61,18 @@ namespace BeaverSyncLib
             };
 
             return meta;
+        }
+
+        /// <summary>
+        /// Проверить существует ли директория, если не существует - создать
+        /// </summary>
+        /// <param name="dirPath">файловый путь к директории</param>
+        public void CreateDirIfNotExist(string dirPath)
+        {
+            if(!Directory.Exists(dirPath))
+            {
+                Directory.CreateDirectory(dirPath);
+            }
         }
     }
 }

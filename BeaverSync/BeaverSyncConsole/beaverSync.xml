@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+
+<BeaverSync>
+  <SyncFilesPair>
+    <FirstFilePath>W:\folder1\file1.txt</FirstFilePath>
+    <SecondFilePath>W:\folder2\file1.txt</SecondFilePath>
+  </SyncFilesPair>
+  <SyncFilesPair>
+    <FirstFilePath>W:\folder1\file2.txt</FirstFilePath>
+    <SecondFilePath>W:\folder2\file2.txt</SecondFilePath>
+  </SyncFilesPair>
+</BeaverSync>

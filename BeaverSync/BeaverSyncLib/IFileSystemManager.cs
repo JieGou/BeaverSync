@@ -1,5 +1,3 @@
-using System;
-
 namespace BeaverSyncLib
 {
     /// <summary>
@@ -26,20 +24,5 @@ namespace BeaverSyncLib
         /// <param name="filePath">Путь к файлу для чтения метаданных</param>
         /// <returns>метаданные файла</returns>
         FileMetadata GetFileMetadata(string filePath);
-    }
-
-    /// <summary>
-    /// Метаданные файла
-    /// </summary>
-    public struct FileMetadata
-    {
-        /// <summary>
-        /// Дата изменения
-        /// </summary>
-        public DateTime LastModified { get; set; }
-        /// <summary>
-        /// Размер файла в байтах
-        /// </summary>
-        public long ByteSize { get; set; }
     }
 }

@@ -22,7 +22,13 @@ namespace BeaverSyncLib
         /// <summary>
         /// Объект для работы с файловой системой
         /// </summary>
-        private IFileSystemManager _manager;
+        private readonly IFileSystemManager _manager;
+        /// <summary>
+        /// Путь к директории в которую будут сохраняться резервные копии неактуального файла
+        /// при синхронизации
+        /// <remarks>при <seealso cref="NeedBackup"/> == true</remarks>
+        /// </summary>
+        private string _backupDirPath = "backup";
 
         /// <summary>
         /// Флаг установлен ли первый файл синхропары
@@ -55,12 +61,27 @@ namespace BeaverSyncLib
         }
 
         /// <summary>
+        /// Флаг нужно ли делать резервную копию неактуального файла в синхропаре при синхронизации
+        /// </summary>
+        public bool NeedBackup { get; set; }
+
+        /// <summary>
+        /// Путь к директории в которую будут сохраняться резервные копии неактуального файла
+        /// при синхронизации
+        /// <remarks>при <seealso cref="NeedBackup"/> == true</remarks>
+        /// </summary>
+        public string BackupDirPath
+        {
+            get { return _backupDirPath; }
+            set { _backupDirPath = value; }
+        }
+
+        /// <summary>
         /// Конструктор
         /// </summary>
         public SyncFilesPair()
+            :this(FileSystemManager.Instance)
         {
-            // инициализируем класс менеджера файловой системы:
-            _manager = new FileSystemManager();
         }
 
         /// <summary>
@@ -69,6 +90,7 @@ namespace BeaverSyncLib
         /// <param name="manager">IFileSystemManager объект</param>
         public SyncFilesPair(IFileSystemManager manager)
         {
+            // инициализируем класс менеджера файловой системы:
             _manager = manager;
         }
 
@@ -131,19 +153,51 @@ namespace BeaverSyncLib
             {
                 if (meta1.LastModified > meta2.LastModified) // если последним изменяли первый файл:
                 {
-                    // то мы удаляем старый второй файл
-                    _manager.DeleteFile(SecondFile.FullPath);
-                    // и создаем новый второй файл как копию первого
-                    _manager.CopyFile(FirstFile.FullPath, SecondFile.FullPath);
+                    if (NeedBackup) 
+                    {
+                        // синхронизируем файлы с бекапом
+                        SyncTransactionWithBackup(_manager, SecondFile, FirstFile, BackupDirPath);
+                    }
+                    else
+                    {
+                        // синхронизируем файлы без бекапа
+                        SyncTransaction(_manager, SecondFile, FirstFile);
+                    }
                 }
                 else // если последним изменяли второй файл:
                 {
-                    // то мы удаляем старый первый файл:
-                    _manager.DeleteFile(FirstFile.FullPath);
-                    // и создаем новый первый файл как копию второго
-                    _manager.CopyFile(SecondFile.FullPath, FirstFile.FullPath);
+                    if (NeedBackup)
+                    {
+                        // синхронизируем файлы с бекапом
+                        SyncTransactionWithBackup(_manager, FirstFile, SecondFile, BackupDirPath);
+                    }
+                    else
+                    {
+                        // синхронизируем файлы без бекапа
+                        SyncTransaction(_manager, FirstFile, SecondFile);
+                    }
                 }
             }
+        }
+
+        private static void SyncTransactionWithBackup(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile, string backupDirPath)
+        {
+            // в самом начале делаем бекап неактуального файла в директории с исполняемым файлом
+            manager.CopyFile(nonActualFile.FullPath,
+                String.Format("{3}\\{0}[{1:yyyy-MM-dd HH-mm-ss}]{2}",  //AppDomain.CurrentDomain.BaseDirectory + 
+                Path.GetFileNameWithoutExtension(nonActualFile.FullPath),
+                SystemTime.Now(), Path.GetExtension(nonActualFile.FullPath), backupDirPath));
+
+            SyncTransaction(manager, nonActualFile, actualFile);
+        }
+
+        private static void SyncTransaction(IFileSystemManager manager, SyncFile nonActualFile, SyncFile actualFile)
+        {
+            // потом удаляем забекапленный неактуальный файл
+            manager.DeleteFile(nonActualFile.FullPath);
+
+            // и создаем новый файл как копию актуального на месте удаленного неактуального
+            manager.CopyFile(actualFile.FullPath, nonActualFile.FullPath);
         }
     }
 }
